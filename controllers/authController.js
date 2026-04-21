@@ -1,4 +1,4 @@
-import User from '../models/user-schema.js';
+import Students from '../models/student-schema.js';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
@@ -7,25 +7,25 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
-// signUp: Create a new user
+// signUp: Create a new student
 export const signUp = async (req, res) => {
     console.log('SignUp Request Received:', req.body);
     const { firstName, lastName, email, password, role } = req.body;
 
     try {
-        // Check if user already exists
+        // Check if student already exists
         console.log('Checking existence for email:', email);
-        const existingUser = await User.findOne({ email });
-        console.log('Existing User matching email:', existingUser ? 'FOUND' : 'NOT FOUND');
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists with this email' });
+        const existingStudent = await Students.findOne({ email });
+        console.log('Existing Student matching email:', existingStudent ? 'FOUND' : 'NOT FOUND');
+        if (existingStudent) {
+            return res.status(400).json({ message: 'Student already exists with this email' });
         }
 
         // Hash password
         const hashedPassword = await bcryptjs.hash(password, 12);
 
-        // Create user
-        const newUser = new User({
+        // Create student
+        const newStudent = new Students({
             firstName,
             lastName,
             email,
@@ -33,24 +33,24 @@ export const signUp = async (req, res) => {
             role: role || 'user'
         });
 
-        await newUser.save();
+        await newStudent.save();
 
         // Generate JWT for auto-login
         const token = jwt.sign(
-            { id: newUser._id, role: newUser.role },
+            { id: newStudent._id, role: newStudent.role },
             JWT_SECRET,
             { expiresIn: '1h' }
         );
 
         res.status(201).json({
-            message: 'User created successfully',
+            message: 'Student account created successfully',
             token,
-            user: {
-                id: newUser._id,
-                firstName: newUser.firstName,
-                lastName: newUser.lastName,
-                email: newUser.email,
-                role: newUser.role
+            students: {
+                id: newStudent._id,
+                firstName: newStudent.firstName,
+                lastName: newStudent.lastName,
+                email: newStudent.email,
+                role: newStudent.role
             }
         });
     } catch (err) {
@@ -59,26 +59,30 @@ export const signUp = async (req, res) => {
     }
 };
 
-// signIn: Authenticate user and return token
+// signIn: Authenticate student and return token
 export const signIn = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+        // Find student by email
+        const student = await Students.findOne({ email });
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
         }
 
         // Check password
-        const isPasswordCorrect = await bcryptjs.compare(password, user.password);
+        const isPasswordCorrect = await bcryptjs.compare(password, student.password);
         if (!isPasswordCorrect) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
+        // Update lastLogin and updatedAt
+        student.lastLogin = new Date();
+        await student.save();
+
         // Generate JWT
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            { id: student._id, role: student.role },
             JWT_SECRET,
             { expiresIn: '1h' }
         );
@@ -86,12 +90,14 @@ export const signIn = async (req, res) => {
         res.status(200).json({
             message: 'Signed in successfully',
             token,
-            user: {
-                id: user._id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                role: user.role
+            students: {
+                id: student._id,
+                firstName: student.firstName,
+                lastName: student.lastName,
+                email: student.email,
+                role: student.role,
+                updatedAt: student.updatedAt,
+                lastLogin: student.lastLogin
             }
         });
     } catch (err) {
@@ -102,5 +108,6 @@ export const signIn = async (req, res) => {
 
 // signOut: Placeholder for sign-out logic
 export const signOut = (req, res) => {
-    res.status(200).json({ message: 'User signed out successfully' });
+    res.status(200).json({ message: 'Student signed out successfully' });
 };
+

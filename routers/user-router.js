@@ -1,15 +1,16 @@
 import express from 'express';
-import { getUsers, getProfile, updateProfile } from '../controllers/userController.js';
+import { getStudents, getProfile, updateProfile } from '../controllers/userController.js';
 
 const router = express.Router();
 
-// Get all users
-router.get("/", getUsers)
+// Get all students
+router.get("/", getStudents)
 
-// Get User Profile
+// Get Student Profile
 router.get('/profile/:id', getProfile);
 
-// Update User Profile
+// Update Student Profile
 router.put('/profile/:id', updateProfile);
 
 export default router;
+

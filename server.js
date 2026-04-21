@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api/users', userRouter);
+app.use('/api/students', userRouter);
 
 // Port Configuration
 const PORT = process.env.PORT || 5000;
