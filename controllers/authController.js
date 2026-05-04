@@ -21,11 +21,14 @@ passport.use(new GoogleStrategy({
           // Find or create student
           let student = await Students.findOne({ email: profile.emails[0].value });
           if (!student) {
+              // Generate a random password since OAuth users don't need one, but schema requires it
+              const randomPassword = Math.random().toString(36).slice(-10) + 'OAuth!';
+              
               student = new Students({
-                  firstName: profile.name.givenName || profile.displayName,
-                  lastName: profile.name.familyName || '',
+                  firstName: (profile.name && profile.name.givenName) || profile.displayName || 'Google',
+                  lastName: (profile.name && profile.name.familyName) || 'User',
                   email: profile.emails[0].value,
-                  password: '', // OAuth users do not use passwords
+                  password: await bcryptjs.hash(randomPassword, 10),
                   role: 'user'
               });
               await student.save();
