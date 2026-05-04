@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -92,6 +93,7 @@ export const signUp = async (req, res) => {
     }
 };
 
+
 // signIn: Authenticate student and return token
 export const googleAuth = passport.authenticate('google', { scope: ['profile', 'email'], session: false });
 
@@ -119,6 +121,76 @@ export const googleAuthCallback = (req, res, next) => {
         const userStr = encodeURIComponent(JSON.stringify(userObj));
         res.redirect(`https://portfolio-puce-chi-d0nzsuka1i.vercel.app?token=${token}&user=${userStr}`);
     })(req, res, next);
+};
+
+export const telegramAuthCallback = async (req, res) => {
+    try {
+        const data = req.query;
+        const botToken = process.env.TELEGRAM_API_TOKEN;
+
+        if (!botToken) {
+            return res.status(500).json({ message: 'Telegram bot token not configured' });
+        }
+
+        const { hash, ...userData } = data;
+        
+        // Verify Telegram Auth
+        const dataCheckArr = [];
+        for (const key in userData) {
+            if (userData[key] !== undefined && userData[key] !== null) {
+                dataCheckArr.push(`${key}=${userData[key]}`);
+            }
+        }
+        dataCheckArr.sort();
+        const dataCheckString = dataCheckArr.join('\n');
+        
+        const secretKey = crypto.createHash('sha256').update(botToken).digest();
+        const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+        if (calculatedHash !== hash) {
+            return res.status(401).json({ message: 'Telegram authentication failed' });
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const authDate = parseInt(userData.auth_date, 10);
+        if (now - authDate > 86400) {
+            return res.status(401).json({ message: 'Telegram auth data is outdated' });
+        }
+
+        let student = await Students.findOne({ email: `${userData.id}@telegram.user` });
+        
+        if (!student) {
+            const randomPassword = Math.random().toString(36).slice(-10) + 'Telegram!';
+            student = new Students({
+                firstName: userData.first_name || userData.username || 'Telegram',
+                lastName: userData.last_name || 'User',
+                email: `${userData.id}@telegram.user`,
+                password: await bcryptjs.hash(randomPassword, 10),
+                role: 'user'
+            });
+            await student.save();
+        }
+
+        const token = jwt.sign(
+            { id: student._id, role: student.role },
+            JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        const userObj = {
+            id: student._id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+            role: student.role
+        };
+        const userStr = encodeURIComponent(JSON.stringify(userObj));
+        res.redirect(`https://portfolio-puce-chi-d0nzsuka1i.vercel.app?token=${token}&user=${userStr}`);
+
+    } catch (err) {
+        console.error('Telegram auth error:', err);
+        res.status(500).json({ message: 'Something went wrong during Telegram authentication' });
+    }
 };
 
 export const signIn = async (req, res) => {

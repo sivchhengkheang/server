@@ -1,5 +1,5 @@
 import express from 'express';
-import { signUp, signIn, signOut, googleAuth, googleAuthCallback } from '../controllers/authController.js';
+import { signUp, signIn, signOut, googleAuth, googleAuthCallback, telegramAuthCallback } from '../controllers/authController.js';
 
 const router = express.Router();
 
@@ -15,5 +15,8 @@ router.post('/sign-out', signOut);
 // Google OAuth Routes
 router.get('/google', googleAuth);
 router.get('/google/callback', googleAuthCallback);
+
+// Telegram OAuth Route
+router.get('/telegram/callback', telegramAuthCallback);
 
 export default router;
