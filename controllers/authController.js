@@ -8,7 +8,6 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-const API_CALLBACK_URI = process.env.API_URI_CALLBACK;
 
 // Configure Google OAuth Strategy
 passport.use(new GoogleStrategy({
@@ -118,7 +117,7 @@ export const googleAuthCallback = (req, res, next) => {
             role: student.role
         };
         const userStr = encodeURIComponent(JSON.stringify(userObj));
-        res.redirect(`API_CALLBACK_URI/?token=${token}&user=${userStr}`);
+        res.redirect(`https://portfolio-puce-chi-d0nzsuka1i.vercel.app?token=${token}&user=${userStr}`);
     })(req, res, next);
 };
 
