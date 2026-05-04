@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import authRouter from './routers/auth-router.js';
 import userRouter from './routers/user-router.js';
 import connectDB from './database/mongodb.js';
+import passport from 'passport';
+import GoogleStrategy from 'passport-google-oauth20';
 
 dotenv.config();
 

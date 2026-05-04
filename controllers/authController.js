@@ -2,10 +2,39 @@ import Students from '../models/student-schema.js';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+
+// Configure Google OAuth Strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "/api/auth/google/callback"
+  },
+  async function(accessToken, refreshToken, profile, cb) {
+      try {
+          // Find or create student
+          let student = await Students.findOne({ email: profile.emails[0].value });
+          if (!student) {
+              student = new Students({
+                  firstName: profile.name.givenName || profile.displayName,
+                  lastName: profile.name.familyName || '',
+                  email: profile.emails[0].value,
+                  password: '', // OAuth users do not use passwords
+                  role: 'user'
+              });
+              await student.save();
+          }
+          return cb(null, student);
+      } catch(err) {
+          return cb(err, null);
+      }
+  }
+));
 
 // signUp: Create a new student
 export const signUp = async (req, res) => {
@@ -60,6 +89,34 @@ export const signUp = async (req, res) => {
 };
 
 // signIn: Authenticate student and return token
+export const googleAuth = passport.authenticate('google', { scope: ['profile', 'email'], session: false });
+
+export const googleAuthCallback = (req, res, next) => {
+    passport.authenticate('google', { session: false }, (err, student, info) => {
+        if (err || !student) {
+            return res.status(401).json({ message: 'Authentication failed' });
+        }
+        
+        // Generate JWT
+        const token = jwt.sign(
+            { id: student._id, role: student.role },
+            JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+        
+        // Return token to the client. Alternatively, you could redirect to the frontend:
+        const userObj = {
+            id: student._id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+            role: student.role
+        };
+        const userStr = encodeURIComponent(JSON.stringify(userObj));
+        res.redirect(`http://localhost:3000/?token=${token}&user=${userStr}`);
+    })(req, res, next);
+};
+
 export const signIn = async (req, res) => {
     const { email, password } = req.body;
 
@@ -110,4 +167,6 @@ export const signIn = async (req, res) => {
 export const signOut = (req, res) => {
     res.status(200).json({ message: 'Student signed out successfully' });
 };
+
+
 
