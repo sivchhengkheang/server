@@ -8,6 +8,8 @@ import crypto from 'crypto';
 
 dotenv.config();
 
+const callBack = process.env.GOOGLE_CALL_BACK
+
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
 // Configure Google OAuth Strategy
@@ -16,29 +18,29 @@ passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: process.env.GOOGLE_CALLBACK_URL || "/api/auth/google/callback",
     proxy: true
-  },
-  async function(accessToken, refreshToken, profile, cb) {
-      try {
-          // Find or create student
-          let student = await Students.findOne({ email: profile.emails[0].value });
-          if (!student) {
-              // Generate a random password since OAuth users don't need one, but schema requires it
-              const randomPassword = Math.random().toString(36).slice(-10) + 'OAuth!';
-              
-              student = new Students({
-                  firstName: (profile.name && profile.name.givenName) || profile.displayName || 'Google',
-                  lastName: (profile.name && profile.name.familyName) || 'User',
-                  email: profile.emails[0].value,
-                  password: await bcryptjs.hash(randomPassword, 10),
-                  role: 'user'
-              });
-              await student.save();
-          }
-          return cb(null, student);
-      } catch(err) {
-          return cb(err, null);
-      }
-  }
+},
+    async function (accessToken, refreshToken, profile, cb) {
+        try {
+            // Find or create student
+            let student = await Students.findOne({ email: profile.emails[0].value });
+            if (!student) {
+                // Generate a random password since OAuth users don't need one, but schema requires it
+                const randomPassword = Math.random().toString(36).slice(-10) + 'OAuth!';
+
+                student = new Students({
+                    firstName: (profile.name && profile.name.givenName) || profile.displayName || 'Google',
+                    lastName: (profile.name && profile.name.familyName) || 'User',
+                    email: profile.emails[0].value,
+                    password: await bcryptjs.hash(randomPassword, 10),
+                    role: 'user'
+                });
+                await student.save();
+            }
+            return cb(null, student);
+        } catch (err) {
+            return cb(err, null);
+        }
+    }
 ));
 
 // signUp: Create a new student
@@ -102,14 +104,14 @@ export const googleAuthCallback = (req, res, next) => {
         if (err || !student) {
             return res.status(401).json({ message: 'Authentication failed' });
         }
-        
+
         // Generate JWT
         const token = jwt.sign(
             { id: student._id, role: student.role },
             JWT_SECRET,
             { expiresIn: '1h' }
         );
-        
+
         // Return token to the client. Alternatively, you could redirect to the frontend:
         const userObj = {
             id: student._id,
@@ -119,7 +121,7 @@ export const googleAuthCallback = (req, res, next) => {
             role: student.role
         };
         const userStr = encodeURIComponent(JSON.stringify(userObj));
-        res.redirect(`https://portfolio-puce-chi-d0nzsuka1i.vercel.app?token=${token}&user=${userStr}`);
+        res.redirect(`${callBack}?token=${token}&user=${userStr}`);
     })(req, res, next);
 };
 
@@ -133,7 +135,7 @@ export const telegramAuthCallback = async (req, res) => {
         }
 
         const { hash, ...userData } = data;
-        
+
         // Verify Telegram Auth
         const dataCheckArr = [];
         for (const key in userData) {
@@ -143,7 +145,7 @@ export const telegramAuthCallback = async (req, res) => {
         }
         dataCheckArr.sort();
         const dataCheckString = dataCheckArr.join('\n');
-        
+
         const secretKey = crypto.createHash('sha256').update(botToken).digest();
         const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
@@ -158,7 +160,7 @@ export const telegramAuthCallback = async (req, res) => {
         }
 
         let student = await Students.findOne({ email: `${userData.id}@telegram.user` });
-        
+
         if (!student) {
             const randomPassword = Math.random().toString(36).slice(-10) + 'Telegram!';
             student = new Students({
