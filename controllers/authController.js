@@ -8,7 +8,7 @@ import crypto from 'crypto';
 
 dotenv.config();
 
-const callBack = process.env.GOOGLE_CALL_BACK
+
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -121,7 +121,7 @@ export const googleAuthCallback = (req, res, next) => {
             role: student.role
         };
         const userStr = encodeURIComponent(JSON.stringify(userObj));
-        res.redirect(`${callBack}?token=${token}&user=${userStr}`);
+        res.redirect(`https://port-game-vault.vercel.app/?token=${token}&user=${userStr}`);
     })(req, res, next);
 };
 
@@ -187,7 +187,7 @@ export const telegramAuthCallback = async (req, res) => {
             role: student.role
         };
         const userStr = encodeURIComponent(JSON.stringify(userObj));
-        res.redirect(`https://portfolio-puce-chi-d0nzsuka1i.vercel.app?token=${token}&user=${userStr}`);
+        res.redirect(`https://port-game-vault.vercel.app/?token=${token}&user=${userStr}`);
 
     } catch (err) {
         console.error('Telegram auth error:', err);
